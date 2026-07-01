@@ -1,0 +1,140 @@
+############################
+# Build
+############################
+
+bin/
+obj/
+artifacts/
+publish/
+
+############################
+# .NET
+############################
+
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+############################
+# Visual Studio
+############################
+
+.vs/
+
+############################
+# Rider / ReSharper
+############################
+
+.idea/
+*.DotSettings.user
+
+# Shared team settings (*.DotSettings) usually SHOULD be committed.
+# Keep only *.DotSettings.user ignored.
+
+############################
+# VS Code
+############################
+
+.vscode/
+
+############################
+# Test Results
+############################
+
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+############################
+# NUnit
+############################
+
+TestResult.xml
+TestResult*.xml
+VisualState.xml
+
+############################
+# Playwright
+############################
+
+playwright-report/
+test-results/
+
+# Downloaded browsers (if not using CI installation)
+ms-playwright/
+
+############################
+# Playwright artifacts
+############################
+
+Screenshots/
+Videos/
+Downloads/
+Traces/
+
+trace.zip
+trace*.zip
+
+############################
+# Allure
+############################
+
+allure-results/
+allure-report/
+allure-history/
+
+############################
+# Logs
+############################
+
+logs/
+*.log
+
+############################
+# Environment
+############################
+
+.env
+.env.*
+!.env.example
+
+############################
+# Secrets
+############################
+
+secrets.json
+
+############################
+# OS
+############################
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+############################
+# Claude Code
+############################
+
+.claude/
+.claude-cache/
+
+############################
+# AI assistants
+############################
+
+.cursor/
+.copilot/
+
+############################
+# Temporary files
+############################
+
+*.tmp
+*.temp
+*.bak
+*.cache
+*.pid
