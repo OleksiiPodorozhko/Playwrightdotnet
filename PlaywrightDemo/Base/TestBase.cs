@@ -72,30 +72,24 @@ public abstract class TestBase : PageTest
     }
 
     [SetUp]
-    public async Task StartTraceAsync()
+    public async Task SetUpTest()
     {
         _artifactPaths = TestArtifactPaths.GetForCurrentTest();
 
-        await Context.Tracing.StartAsync(new TracingStartOptions
-        {
-            Title = TestContext.CurrentContext.Test.FullName,
-            Screenshots = true,
-            Snapshots = true,
-            Sources = true
-        });
+        await StartTracingAsync();
     }
 
     [TearDown]
-    public async Task CaptureFailureArtifactsAsync()
+    public async Task TearDownTest()
     {
         var failed = TestContext.CurrentContext.Result.Outcome.Status == TestStatus.Failed;
-        var video = Page.Video;
+        var tempVideo = Page.Video;
 
         try
         {
             if (failed)
             {
-                await CapturePageFailureArtifactsAsync();
+                await CaptureFailureArtifactsAsync();
             }
         }
         catch (Exception exception)
@@ -105,16 +99,23 @@ public abstract class TestBase : PageTest
         finally
         {
             await StopTracingAsync(failed);
-            await FinalizeVideoAsync(video, failed);
-
-            if (!failed)
-            {
-                ArtifactPaths.DeleteTestDirectoryIfExists();
-            }
+            await FinalizeVideoAsync(tempVideo, failed);
+            CleanUpPassedTestArtifacts(failed);
         }
     }
 
-    private async Task CapturePageFailureArtifactsAsync()
+    private async Task StartTracingAsync()
+    {
+        await Context.Tracing.StartAsync(new TracingStartOptions
+        {
+            Title = TestContext.CurrentContext.Test.FullName,
+            Screenshots = true,
+            Snapshots = true,
+            Sources = true
+        });
+    }
+
+    private async Task CaptureFailureArtifactsAsync()
     {
         ArtifactPaths.EnsureDirectories();
 
@@ -129,6 +130,16 @@ public abstract class TestBase : PageTest
         AllureAttachmentHelper.AttachTextFile("Current page URL", ArtifactPaths.UrlPath);
         AllureAttachmentHelper.AttachHtmlFile("Page HTML", ArtifactPaths.HtmlPath);
         AllureAttachmentHelper.AttachPngFile("Screenshot", ArtifactPaths.ScreenshotPath);
+    }
+
+    private void CleanUpPassedTestArtifacts(bool failed)
+    {
+        if (failed)
+        {
+            return;
+        }
+
+        ArtifactPaths.DeleteTestDirectoryIfExists();
     }
 
     private async Task StopTracingAsync(bool failed)
@@ -151,27 +162,29 @@ public abstract class TestBase : PageTest
         }
     }
 
-    private async Task FinalizeVideoAsync(IVideo? video, bool failed)
+    private async Task FinalizeVideoAsync(IVideo? tempVideo, bool failed)
     {
         try
         {
             await Context.CloseAsync();
 
-            if (video is null)
+            if (tempVideo is null)
             {
                 return;
             }
 
-            var videoPath = await video.PathAsync();
+            var tempVideoPath = await tempVideo.PathAsync();
 
             if (failed)
             {
                 ArtifactPaths.EnsureDirectories();
 
-                var retainedVideoPath = ArtifactPaths.VideoPath(videoPath);
-                File.Copy(videoPath, retainedVideoPath, overwrite: true);
+                var retainedVideoPath = ArtifactPaths.VideoPath(tempVideoPath);
+                File.Copy(tempVideoPath, retainedVideoPath, overwrite: true);
 
-                if (new FileInfo(retainedVideoPath).Length == 0)
+                var retainedVideo = new FileInfo(retainedVideoPath);
+
+                if (retainedVideo.Length == 0)
                 {
                     TestContext.Progress.WriteLine($"Playwright video was retained but is empty: {retainedVideoPath}");
                     return;
@@ -181,7 +194,7 @@ public abstract class TestBase : PageTest
                 return;
             }
 
-            await video.DeleteAsync();
+            await tempVideo.DeleteAsync();
         }
         catch (Exception exception)
         {
