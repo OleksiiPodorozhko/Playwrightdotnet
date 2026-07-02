@@ -16,40 +16,42 @@ public class TodoMvcTests : TodoMvcTestBase
     [AllureTmsItem("TC-001", Title = "Add todo")]
     public async Task AddTodoCreatesAnActiveTodo()
     {
-        await TestStep("Open TodoMVC app with clean storage", OpenTodoMvcWithCleanStorageAsync);
+        await TestStep("Open TodoMVC app", OpenTodoMvcAsync);
 
         await TestStep("Verify empty TodoMVC page is ready for input", async () =>
         {
             await Expect(Page).ToHaveTitleAsync("React • TodoMVC");
-            await Expect(TodoMvc.Heading).ToBeVisibleAsync();
-            await Expect(TodoMvc.NewTodoInput).ToBeVisibleAsync();
-            await Expect(TodoMvc.NewTodoInput).ToBeFocusedAsync();
-            await Expect(TodoMvc.TodoItems).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.Heading).ToBeVisibleAsync();
+            await Expect(TodoMvcPage.NewTodoInput).ToBeVisibleAsync();
+            await Expect(TodoMvcPage.NewTodoInput).ToBeFocusedAsync();
+            await Expect(TodoMvcPage.TodoItems).ToHaveCountAsync(0);
         });
 
         await TestStep($"Add todo '{TodoMvcTestData.BuyMilk}'", async () =>
         {
-            await TodoMvc.AddTodoAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.AddTodoAsync(TodoMvcTestData.BuyMilk);
         });
 
         await TestStep("Verify added todo is active", async () =>
         {
-            await VerifyVisibleTodosAsync(TodoMvcTestData.BuyMilk);
-            await VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
         });
 
         await TestStep("Verify footer and input state after adding todo", async () =>
         {
-            await Expect(TodoMvc.TodoCounter).ToHaveTextAsync("1 item left");
-            await Expect(TodoMvc.AllFilter).ToBeVisibleAsync();
-            await Expect(TodoMvc.ActiveFilter).ToBeVisibleAsync();
-            await Expect(TodoMvc.CompletedFilter).ToBeVisibleAsync();
-            await Expect(TodoMvc.NewTodoInput).ToHaveValueAsync(string.Empty);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("1 item left");
+            await Expect(TodoMvcPage.AllFilter).ToBeVisibleAsync();
+            await Expect(TodoMvcPage.ActiveFilter).ToBeVisibleAsync();
+            await Expect(TodoMvcPage.CompletedFilter).ToBeVisibleAsync();
+            await Expect(TodoMvcPage.NewTodoInput).ToHaveValueAsync(string.Empty);
         });
 
-        await TestStep("Verify todo is saved to local storage", async () =>
+        await TestStep("Verify todo remains visible after reload", async () =>
         {
-            await VerifyStoredTodosAsync(ExpectedActive(TodoMvcTestData.BuyMilk));
+            await Page.ReloadAsync();
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
         });
     }
 
@@ -60,29 +62,30 @@ public class TodoMvcTests : TodoMvcTestBase
     [AllureTmsItem("TC-002", Title = "Add multiple todos")]
     public async Task AddMultipleTodosCreatesActiveTodosInOrder()
     {
-        await TestStep("Open TodoMVC app with clean storage", OpenTodoMvcWithCleanStorageAsync);
+        await TestStep("Open TodoMVC app", OpenTodoMvcAsync);
 
         await TestStep("Add three active todos", async () =>
         {
-            await TodoMvc.AddTodosAsync(TodoMvcTestData.ThreeTodos);
+            await TodoMvcPage.AddTodosAsync(TodoMvcTestData.ThreeTodos);
         });
 
         await TestStep("Verify todos are displayed in insertion order", async () =>
         {
-            await VerifyVisibleTodosAsync(TodoMvcTestData.ThreeTodos);
-            await Expect(TodoMvc.ActiveTodoItems).ToHaveCountAsync(3);
-            await Expect(TodoMvc.CompletedTodoItems).ToHaveCountAsync(0);
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.ThreeTodos);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(3);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(0);
         });
 
-        await TestStep("Verify footer and storage after adding multiple todos", async () =>
+        await TestStep("Verify footer and persisted UI after adding multiple todos", async () =>
         {
-            await Expect(TodoMvc.TodoCounter).ToHaveTextAsync("3 items left");
-            await Expect(TodoMvc.NewTodoInput).ToHaveValueAsync(string.Empty);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("3 items left");
+            await Expect(TodoMvcPage.NewTodoInput).ToHaveValueAsync(string.Empty);
 
-            await VerifyStoredTodosAsync(
-                ExpectedActive(TodoMvcTestData.BuyMilk),
-                ExpectedActive(TodoMvcTestData.WalkDog),
-                ExpectedActive(TodoMvcTestData.ReadBook));
+            await Page.ReloadAsync();
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.ThreeTodos);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(3);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("3 items left");
         });
     }
 
@@ -95,33 +98,37 @@ public class TodoMvcTests : TodoMvcTestBase
     {
         await TestStep("Open TodoMVC app with three active todos", async () =>
         {
-            await OpenTodoMvcWithCleanStorageAsync();
-            await TodoMvc.AddTodosAsync(TodoMvcTestData.ThreeTodos);
+            await OpenTodoMvcAsync();
+            await TodoMvcPage.AddTodosAsync(TodoMvcTestData.ThreeTodos);
         });
 
         await TestStep($"Complete todo '{TodoMvcTestData.WalkDog}'", async () =>
         {
-            await TodoMvc.CompleteTodoAsync(TodoMvcTestData.WalkDog);
+            await TodoMvcPage.CompleteTodoAsync(TodoMvcTestData.WalkDog);
         });
 
         await TestStep("Verify only selected todo is completed", async () =>
         {
-            await VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
-            await VerifyTodoIsCompletedAsync(TodoMvcTestData.WalkDog);
-            await VerifyTodoIsActiveAsync(TodoMvcTestData.ReadBook);
-            await Expect(TodoMvc.ActiveTodoItems).ToHaveCountAsync(2);
-            await Expect(TodoMvc.CompletedTodoItems).ToHaveCountAsync(1);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyTodoIsCompletedAsync(TodoMvcTestData.WalkDog);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(2);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(1);
         });
 
-        await TestStep("Verify counter, clear completed button, and storage", async () =>
+        await TestStep("Verify counter, clear completed button, and persisted UI", async () =>
         {
-            await Expect(TodoMvc.TodoCounter).ToHaveTextAsync("2 items left");
-            await Expect(TodoMvc.ClearCompletedButton).ToBeVisibleAsync();
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("2 items left");
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeVisibleAsync();
 
-            await VerifyStoredTodosAsync(
-                ExpectedActive(TodoMvcTestData.BuyMilk),
-                ExpectedCompleted(TodoMvcTestData.WalkDog),
-                ExpectedActive(TodoMvcTestData.ReadBook));
+            await Page.ReloadAsync();
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyTodoIsCompletedAsync(TodoMvcTestData.WalkDog);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(2);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(1);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("2 items left");
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeVisibleAsync();
         });
     }
 
@@ -134,34 +141,38 @@ public class TodoMvcTests : TodoMvcTestBase
     {
         await TestStep("Open TodoMVC app with one completed todo", async () =>
         {
-            await OpenTodoMvcWithCleanStorageAsync();
-            await TodoMvc.AddTodosAsync(TodoMvcTestData.ThreeTodos);
-            await TodoMvc.CompleteTodoAsync(TodoMvcTestData.WalkDog);
+            await OpenTodoMvcAsync();
+            await TodoMvcPage.AddTodosAsync(TodoMvcTestData.ThreeTodos);
+            await TodoMvcPage.CompleteTodoAsync(TodoMvcTestData.WalkDog);
         });
 
         await TestStep($"Uncomplete todo '{TodoMvcTestData.WalkDog}'", async () =>
         {
-            await TodoMvc.UncompleteTodoAsync(TodoMvcTestData.WalkDog);
+            await TodoMvcPage.UncompleteTodoAsync(TodoMvcTestData.WalkDog);
         });
 
         await TestStep("Verify all todos are active again", async () =>
         {
-            await VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
-            await VerifyTodoIsActiveAsync(TodoMvcTestData.WalkDog);
-            await VerifyTodoIsActiveAsync(TodoMvcTestData.ReadBook);
-            await Expect(TodoMvc.ActiveTodoItems).ToHaveCountAsync(3);
-            await Expect(TodoMvc.CompletedTodoItems).ToHaveCountAsync(0);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.WalkDog);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(3);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(0);
         });
 
-        await TestStep("Verify counter, clear completed button, and storage", async () =>
+        await TestStep("Verify counter, clear completed button, and persisted UI", async () =>
         {
-            await Expect(TodoMvc.TodoCounter).ToHaveTextAsync("3 items left");
-            await Expect(TodoMvc.ClearCompletedButton).ToBeHiddenAsync();
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("3 items left");
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeHiddenAsync();
 
-            await VerifyStoredTodosAsync(
-                ExpectedActive(TodoMvcTestData.BuyMilk),
-                ExpectedActive(TodoMvcTestData.WalkDog),
-                ExpectedActive(TodoMvcTestData.ReadBook));
+            await Page.ReloadAsync();
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.WalkDog);
+            await TodoMvcPage.VerifyTodoIsActiveAsync(TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(3);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("3 items left");
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeHiddenAsync();
         });
     }
 
@@ -174,28 +185,29 @@ public class TodoMvcTests : TodoMvcTestBase
     {
         await TestStep("Open TodoMVC app with three active todos", async () =>
         {
-            await OpenTodoMvcWithCleanStorageAsync();
-            await TodoMvc.AddTodosAsync(TodoMvcTestData.ThreeTodos);
+            await OpenTodoMvcAsync();
+            await TodoMvcPage.AddTodosAsync(TodoMvcTestData.ThreeTodos);
         });
 
         await TestStep($"Delete todo '{TodoMvcTestData.BuyMilk}'", async () =>
         {
-            await TodoMvc.DeleteTodoAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.DeleteTodoAsync(TodoMvcTestData.BuyMilk);
         });
 
         await TestStep("Verify only selected todo is removed", async () =>
         {
-            await VerifyVisibleTodosAsync(TodoMvcTestData.WalkDog, TodoMvcTestData.ReadBook);
-            await Expect(TodoMvc.TodoLabel(TodoMvcTestData.BuyMilk)).ToHaveCountAsync(0);
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.WalkDog, TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.TodoLabel(TodoMvcTestData.BuyMilk)).ToHaveCountAsync(0);
         });
 
-        await TestStep("Verify counter and storage after deleting todo", async () =>
+        await TestStep("Verify counter and persisted UI after deleting todo", async () =>
         {
-            await Expect(TodoMvc.TodoCounter).ToHaveTextAsync("2 items left");
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("2 items left");
 
-            await VerifyStoredTodosAsync(
-                ExpectedActive(TodoMvcTestData.WalkDog),
-                ExpectedActive(TodoMvcTestData.ReadBook));
+            await Page.ReloadAsync();
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.WalkDog, TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.TodoLabel(TodoMvcTestData.BuyMilk)).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("2 items left");
         });
     }
 
@@ -208,26 +220,30 @@ public class TodoMvcTests : TodoMvcTestBase
     {
         await TestStep("Open TodoMVC app with one active todo", async () =>
         {
-            await OpenTodoMvcWithCleanStorageAsync();
-            await TodoMvc.AddTodoAsync(TodoMvcTestData.BuyMilk);
+            await OpenTodoMvcAsync();
+            await TodoMvcPage.AddTodoAsync(TodoMvcTestData.BuyMilk);
         });
 
         await TestStep($"Delete todo '{TodoMvcTestData.BuyMilk}'", async () =>
         {
-            await TodoMvc.DeleteTodoAsync(TodoMvcTestData.BuyMilk);
+            await TodoMvcPage.DeleteTodoAsync(TodoMvcTestData.BuyMilk);
         });
 
         await TestStep("Verify app returns to empty state", async () =>
         {
-            await Expect(TodoMvc.TodoItems).ToHaveCountAsync(0);
-            await Expect(TodoMvc.Main).ToHaveCountAsync(0);
-            await Expect(TodoMvc.Footer).ToHaveCountAsync(0);
-            await Expect(TodoMvc.NewTodoInput).ToHaveValueAsync(string.Empty);
+            await Expect(TodoMvcPage.TodoItems).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.Main).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.Footer).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.NewTodoInput).ToHaveValueAsync(string.Empty);
         });
 
-        await TestStep("Verify storage contains no todos", async () =>
+        await TestStep("Verify empty state remains after reload", async () =>
         {
-            await VerifyStoredTodosAsync();
+            await Page.ReloadAsync();
+            await Expect(TodoMvcPage.TodoItems).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.Main).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.Footer).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.NewTodoInput).ToHaveValueAsync(string.Empty);
         });
     }
 
@@ -240,33 +256,37 @@ public class TodoMvcTests : TodoMvcTestBase
     {
         await TestStep("Open TodoMVC app with active and completed todos", async () =>
         {
-            await OpenTodoMvcWithCleanStorageAsync();
-            await TodoMvc.AddTodosAsync(TodoMvcTestData.ThreeTodos);
-            await TodoMvc.CompleteTodoAsync(TodoMvcTestData.WalkDog);
+            await OpenTodoMvcAsync();
+            await TodoMvcPage.AddTodosAsync(TodoMvcTestData.ThreeTodos);
+            await TodoMvcPage.CompleteTodoAsync(TodoMvcTestData.WalkDog);
         });
 
         await TestStep("Clear completed todos", async () =>
         {
-            await Expect(TodoMvc.ClearCompletedButton).ToBeVisibleAsync();
-            await TodoMvc.ClearCompletedAsync();
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeVisibleAsync();
+            await TodoMvcPage.ClearCompletedAsync();
         });
 
         await TestStep("Verify completed todo is removed and active todos remain", async () =>
         {
-            await VerifyVisibleTodosAsync(TodoMvcTestData.BuyMilk, TodoMvcTestData.ReadBook);
-            await Expect(TodoMvc.TodoLabel(TodoMvcTestData.WalkDog)).ToHaveCountAsync(0);
-            await Expect(TodoMvc.ActiveTodoItems).ToHaveCountAsync(2);
-            await Expect(TodoMvc.CompletedTodoItems).ToHaveCountAsync(0);
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.BuyMilk, TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.TodoLabel(TodoMvcTestData.WalkDog)).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(2);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(0);
         });
 
-        await TestStep("Verify counter, clear completed button, and storage", async () =>
+        await TestStep("Verify counter, clear completed button, and persisted UI", async () =>
         {
-            await Expect(TodoMvc.TodoCounter).ToHaveTextAsync("2 items left");
-            await Expect(TodoMvc.ClearCompletedButton).ToBeHiddenAsync();
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("2 items left");
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeHiddenAsync();
 
-            await VerifyStoredTodosAsync(
-                ExpectedActive(TodoMvcTestData.BuyMilk),
-                ExpectedActive(TodoMvcTestData.ReadBook));
+            await Page.ReloadAsync();
+            await TodoMvcPage.VerifyVisibleTodosAsync(TodoMvcTestData.BuyMilk, TodoMvcTestData.ReadBook);
+            await Expect(TodoMvcPage.TodoLabel(TodoMvcTestData.WalkDog)).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.ActiveTodoItems).ToHaveCountAsync(2);
+            await Expect(TodoMvcPage.CompletedTodoItems).ToHaveCountAsync(0);
+            await Expect(TodoMvcPage.TodoCounter).ToHaveTextAsync("2 items left");
+            await Expect(TodoMvcPage.ClearCompletedButton).ToBeHiddenAsync();
         });
     }
 }

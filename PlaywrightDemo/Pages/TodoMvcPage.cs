@@ -1,6 +1,4 @@
 using Microsoft.Playwright;
-using PlaywrightDemo.Models;
-using System.Text.Json;
 
 namespace PlaywrightDemo.Pages;
 
@@ -89,10 +87,25 @@ public class TodoMvcPage
         return ClearCompletedButton.ClickAsync();
     }
 
-    public async Task<IReadOnlyList<TodoStorageItem>> GetStoredTodosAsync()
+    public async Task VerifyVisibleTodosAsync(params string[] titles)
     {
-        var storedTodos = await _page.EvaluateAsync<string>("() => localStorage.getItem('react-todos') ?? '[]'");
+        await Assertions.Expect(TodoItems).ToHaveCountAsync(titles.Length);
 
-        return JsonSerializer.Deserialize<List<TodoStorageItem>>(storedTodos) ?? [];
+        for (var index = 0; index < titles.Length; index++)
+        {
+            await Assertions.Expect(TodoItems.Nth(index).Locator("label")).ToHaveTextAsync(titles[index]);
+        }
+    }
+
+    public async Task VerifyTodoIsActiveAsync(string title)
+    {
+        await Assertions.Expect(TodoItem(title)).Not.ToHaveClassAsync(new Regex("completed"));
+        await Assertions.Expect(TodoToggle(title)).Not.ToBeCheckedAsync();
+    }
+
+    public async Task VerifyTodoIsCompletedAsync(string title)
+    {
+        await Assertions.Expect(TodoItem(title)).ToHaveClassAsync(new Regex("completed"));
+        await Assertions.Expect(TodoToggle(title)).ToBeCheckedAsync();
     }
 }

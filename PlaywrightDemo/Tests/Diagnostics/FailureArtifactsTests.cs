@@ -20,12 +20,12 @@ public class FailureArtifactsTests : TodoMvcTestBase
             Assert.Ignore("Set RUN_FAILURE_DEMO=true to intentionally run the failure artifact demo.");
         }
 
-        await TestStep("Open TodoMVC app with clean storage", OpenTodoMvcWithCleanStorageAsync);
+        await TestStep("Open TodoMVC app", OpenTodoMvcAsync);
 
         await TestStep("Fail intentionally after page interaction", async () =>
         {
-            await TodoMvc.AddTodoAsync("This todo exists only for failure artifact verification");
-            Assert.That(await TodoMvc.TodoLabel("This todo exists only for failure artifact verification").TextContentAsync(),
+            await TodoMvcPage.AddTodoAsync("This todo exists only for failure artifact verification");
+            Assert.That(await TodoMvcPage.TodoLabel("This todo exists only for failure artifact verification").TextContentAsync(),
                 Is.EqualTo("A deliberately wrong title"));
         });
     }
