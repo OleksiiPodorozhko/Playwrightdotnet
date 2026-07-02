@@ -1,0 +1,107 @@
+name: Playwright .NET
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_failing_demo:
+        description: "Run the intentional failure test to verify artifacts"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      test_filter:
+        description: "Optional dotnet test filter"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Java for Allure
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Prepare test result directories
+        shell: bash
+        run: |
+          rm -rf test-results/allure-results test-results/allure-report test-results/artifacts
+          mkdir -p test-results/allure-results
+          mkdir -p test-results/allure-report
+          mkdir -p test-results/artifacts
+
+      - name: Restore
+        run: dotnet restore PlaywrightDemo/PlaywrightDemo.csproj
+
+      - name: Build
+        run: dotnet build PlaywrightDemo/PlaywrightDemo.csproj --configuration Debug --no-restore
+
+      - name: Install Playwright browsers
+        shell: pwsh
+        run: PlaywrightDemo/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Run tests
+        shell: bash
+        env:
+          RUN_FAILURE_DEMO: ${{ inputs.include_failing_demo }}
+        run: |
+          FILTER="${{ inputs.test_filter }}"
+          if [[ -z "${FILTER}" && "${{ inputs.include_failing_demo }}" != "true" ]]; then
+            FILTER="TestCategory!=Diagnostics"
+          fi
+
+          if [[ -n "${FILTER}" ]]; then
+            dotnet test PlaywrightDemo/PlaywrightDemo.csproj --no-build --filter "${FILTER}"
+          else
+            dotnet test PlaywrightDemo/PlaywrightDemo.csproj --no-build
+          fi
+
+      - name: Install Allure commandline
+        if: always()
+        run: npm install -g allure-commandline
+
+      - name: Generate Allure report
+        if: always()
+        run: allure generate test-results/allure-results --clean -o test-results/allure-report
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: test-results/allure-report
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: test-results/allure-results
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload raw Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-artifacts
+          path: test-results/artifacts
+          if-no-files-found: warn
+          retention-days: 14

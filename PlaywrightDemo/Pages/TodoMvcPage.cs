@@ -1,4 +1,6 @@
 using Microsoft.Playwright;
+using PlaywrightDemo.Models;
+using System.Text.Json;
 
 namespace PlaywrightDemo.Pages;
 
@@ -15,6 +17,10 @@ public class TodoMvcPage
 
     public ILocator NewTodoInput => _page.GetByPlaceholder("What needs to be done?");
 
+    public ILocator Main => _page.Locator(".main");
+
+    public ILocator Footer => _page.Locator(".footer");
+
     public ILocator TodoItems => _page.Locator(".todo-list li");
 
     public ILocator ActiveTodoItems => _page.Locator(".todo-list li:not(.completed)");
@@ -29,14 +35,21 @@ public class TodoMvcPage
 
     public ILocator CompletedFilter => _page.GetByRole(AriaRole.Link, new() { Name = "Completed" });
 
+    public ILocator ClearCompletedButton => _page.Locator(".clear-completed");
+
+    public ILocator TodoItem(string title)
+    {
+        return TodoItems.Filter(new() { HasText = title });
+    }
+
     public ILocator TodoLabel(string title)
     {
-        return TodoItems.Filter(new() { HasText = title }).Locator("label");
+        return TodoItem(title).Locator("label");
     }
 
     public ILocator TodoToggle(string title)
     {
-        return TodoItems.Filter(new() { HasText = title }).Locator(".toggle");
+        return TodoItem(title).Locator(".toggle");
     }
 
     public async Task AddTodoAsync(string title)
@@ -45,8 +58,41 @@ public class TodoMvcPage
         await NewTodoInput.PressAsync("Enter");
     }
 
-    public Task<string> StoredTodosAsync()
+    public async Task AddTodosAsync(params string[] titles)
     {
-        return _page.EvaluateAsync<string>("() => localStorage.getItem('react-todos') ?? ''");
+        foreach (var title in titles)
+        {
+            await AddTodoAsync(title);
+        }
+    }
+
+    public Task CompleteTodoAsync(string title)
+    {
+        return TodoToggle(title).CheckAsync();
+    }
+
+    public Task UncompleteTodoAsync(string title)
+    {
+        return TodoToggle(title).UncheckAsync();
+    }
+
+    public async Task DeleteTodoAsync(string title)
+    {
+        var todoItem = TodoItem(title);
+
+        await todoItem.HoverAsync();
+        await todoItem.Locator(".destroy").ClickAsync();
+    }
+
+    public Task ClearCompletedAsync()
+    {
+        return ClearCompletedButton.ClickAsync();
+    }
+
+    public async Task<IReadOnlyList<TodoStorageItem>> GetStoredTodosAsync()
+    {
+        var storedTodos = await _page.EvaluateAsync<string>("() => localStorage.getItem('react-todos') ?? '[]'");
+
+        return JsonSerializer.Deserialize<List<TodoStorageItem>>(storedTodos) ?? [];
     }
 }

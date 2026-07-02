@@ -61,7 +61,16 @@ VisualState.xml
 ############################
 
 playwright-report/
-test-results/
+test-results/*
+!test-results/allure-results/
+test-results/allure-results/*
+!test-results/allure-results/.gitkeep
+!test-results/allure-report/
+test-results/allure-report/*
+!test-results/allure-report/.gitkeep
+!test-results/artifacts/
+test-results/artifacts/*
+!test-results/artifacts/.gitkeep
 
 # Downloaded browsers (if not using CI installation)
 ms-playwright/
