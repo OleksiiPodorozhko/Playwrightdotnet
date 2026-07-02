@@ -91,17 +91,26 @@ public abstract class TestBase : PageTest
         var failed = TestContext.CurrentContext.Result.Outcome.Status == TestStatus.Failed;
         var video = Page.Video;
 
-        if (failed)
+        try
         {
-            await CapturePageFailureArtifactsAsync();
+            if (failed)
+            {
+                await CapturePageFailureArtifactsAsync();
+            }
         }
-
-        await StopTracingAsync(failed);
-        await FinalizeVideoAsync(video, failed);
-
-        if (!failed)
+        catch (Exception exception)
         {
-            ArtifactPaths.DeleteTestDirectoryIfExists();
+            TestContext.Progress.WriteLine($"Unable to capture page failure artifacts: {exception}");
+        }
+        finally
+        {
+            await StopTracingAsync(failed);
+            await FinalizeVideoAsync(video, failed);
+
+            if (!failed)
+            {
+                ArtifactPaths.DeleteTestDirectoryIfExists();
+            }
         }
     }
 
@@ -146,7 +155,7 @@ public abstract class TestBase : PageTest
     {
         try
         {
-            await Page.CloseAsync();
+            await Context.CloseAsync();
 
             if (video is null)
             {
@@ -161,6 +170,12 @@ public abstract class TestBase : PageTest
 
                 var retainedVideoPath = ArtifactPaths.VideoPath(videoPath);
                 File.Copy(videoPath, retainedVideoPath, overwrite: true);
+
+                if (new FileInfo(retainedVideoPath).Length == 0)
+                {
+                    TestContext.Progress.WriteLine($"Playwright video was retained but is empty: {retainedVideoPath}");
+                    return;
+                }
 
                 AllureAttachmentHelper.AttachWebmFile("Playwright video", retainedVideoPath);
                 return;
