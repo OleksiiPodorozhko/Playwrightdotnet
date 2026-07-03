@@ -179,7 +179,7 @@ public abstract class TestBase : PageTest
             {
                 ArtifactPaths.EnsureDirectories();
 
-                var retainedVideoPath = ArtifactPaths.VideoPath(tempVideoPath);
+                var retainedVideoPath = ArtifactPaths.VideoPath;
                 File.Copy(tempVideoPath, retainedVideoPath, overwrite: true);
 
                 var retainedVideo = new FileInfo(retainedVideoPath);

@@ -4,7 +4,7 @@
 
 bin/
 obj/
-artifacts/
+/test-results/artifacts/
 publish/
 
 ############################
@@ -79,21 +79,21 @@ ms-playwright/
 # Playwright artifacts
 ############################
 
-Screenshots/
-Videos/
-Downloads/
-Traces/
+/Screenshots/
+/Videos/
+/Downloads/
+/Traces/
 
-trace.zip
-trace*.zip
+/trace.zip
+/trace*.zip
 
 ############################
 # Allure
 ############################
 
-allure-results/
-allure-report/
-allure-history/
+/allure-results/
+/allure-report/
+/allure-history/
 
 ############################
 # Logs
